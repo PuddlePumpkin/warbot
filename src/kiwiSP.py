@@ -2,6 +2,7 @@ import asyncio
 from asyncio.subprocess import Process
 import gc
 from inspect import getmembers
+import pytz
 import json
 import os
 import random
@@ -11,6 +12,7 @@ import datetime
 import re
 import traceback
 import subprocess
+import time
 from io import BytesIO
 import hikari
 import lightbulb
@@ -85,18 +87,24 @@ async def respond_with_autodelete(text: str, ctx: lightbulb.SlashContext, color=
 # war command
 # ----------------------------------
 @bdo.child
-@lightbulb.option("meetuptimestamp", "unix timestamp of meetup time (unixtimestamp.com)", required=True, type=int)
-@lightbulb.option("playercap", "max players across all teams", required=True, default = 25, type=int)
-@lightbulb.option("mainballcap", "max players in mainball team", required=False, default = 30, type=int)
-@lightbulb.option("defencecap", "max players in defence team", required=False, default = 30, type=int)
-@lightbulb.option("flexcap", "max players in flex team", required=False, default = 30, type=int)
-@lightbulb.option("cannonscap", "max players on cannon team", required=False, default = 30, type=int)
+@lightbulb.option("pdtmeetupdatetime", "PDT Day and time for meetup formatted like 12/24/2023 9:54 pm", required=True, type=str)
+@lightbulb.option("playercap", "max players across all teams", required=True, max_value=100, min_value=1, type=int)
+@lightbulb.option("mainballcap", "max players in mainball team", required=True, max_value=30, min_value=0, type=int)
+@lightbulb.option("defencecap", "max players in defence team", required=True, max_value=30, min_value=0, type=int)
+@lightbulb.option("flexcap", "max players in flex team", required=True, max_value=30, min_value=0, type=int)
+@lightbulb.option("cannonscap", "max players on cannon team", required=True, max_value=30, min_value=0, type=int)
 @lightbulb.option("embedtitle", "title to show at top of embed", required=False, default = "NODE WAR", type=str)
 @lightbulb.command("war", "war signups")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def warsignups(ctx: lightbulb.SlashContext) -> None:
-    if str(ctx.author.id) not in get_admin_list():
-        await respond_with_autodelete("You must be marked as admin to use this command...", ctx)
+    try:
+        #print(ctx.author.id)
+        #print(get_admin_list())
+        if str(ctx.author.id) not in get_admin_list():
+            await respond_with_autodelete("Your id must be present in config/kiwiconfig.txt to use this command...", ctx)
+            return
+    except:
+        await respond_with_autodelete("Your id must be present in config/kiwiconfig.txt to use this command...", ctx)
         return
     try:
         embed = hikari.Embed(title="Pending war (select team to refresh)", colour=hikari.Colour(0x09ff00))
@@ -108,6 +116,21 @@ async def warsignups(ctx: lightbulb.SlashContext) -> None:
     except Exception:
         await respond_with_autodelete("Sorry, something went wrong...",ctx)
 
+# ----------------------------------
+# autotimestamp
+# ----------------------------------
+def convert_to_unix_timestamp(date_time_str):
+    # Convert string to datetime object
+    date_time_obj = datetime.datetime.strptime(date_time_str, '%m/%d/%Y %I:%M %p')
+
+    # Set timezone to PDT
+    timezone = pytz.timezone('America/Los_Angeles')
+    date_time_obj = timezone.localize(date_time_obj)
+
+    # Convert datetime object to Unix timestamp
+    unix_timestamp = int(date_time_obj.timestamp())
+
+    return unix_timestamp
 
 # ----------------------------------
 # war time command
@@ -142,6 +165,7 @@ async def generate_rows(bot: lightbulb.BotApp):
     flex = "Flex"
     tent = "Tentative"
     absent = "Absent"
+    cannons = "Cannons"
     row1.add_button(hikari.ButtonStyle.SECONDARY,
                    "mainball").set_label(mainball).add_to_container()
     row1.add_button(hikari.ButtonStyle.SECONDARY,
@@ -150,6 +174,8 @@ async def generate_rows(bot: lightbulb.BotApp):
                    "flex").set_label(flex).add_to_container()
     rows.append(row1)
     row2 = bot.rest.build_action_row()
+    row2.add_button(hikari.ButtonStyle.SECONDARY,
+                   "cannons").set_label(cannons).add_to_container()
     row2.add_button(hikari.ButtonStyle.SECONDARY,
                    "tentative").set_label(tent).add_to_container()
     row2.add_button(hikari.ButtonStyle.SECONDARY,
@@ -170,7 +196,7 @@ def load_config():
     with open('config/kiwiconfig.json', 'r') as openfile:
         config = json.load(openfile)
         openfile.close()
-
+load_config()
 def get_admin_list() -> list:
     global config
     return config["AdminList"].replace(", ", "").replace(" ,", "").replace(" , ", "").split(",")
@@ -200,6 +226,10 @@ def remstuff (nickname):
         pass
     try:
         absentlist.remove(str(nickname))
+    except:
+        pass
+    try:
+        cannonslist.remove(str(nickname))
     except:
         pass
     try:
@@ -233,7 +263,12 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
                         flexlist.append(str(event.interaction.user.id))
                     else:
                         benchlist.append(str(event.interaction.user.id))
-                        
+            if cid == "cannons":
+                    remstuff(str(event.interaction.user.id))
+                    if (len(cannonslist) < ctx.options.cannonscap) and getplayercount()<ctx.options.playercap:
+                        cannonslist.append(str(event.interaction.user.id))
+                    else:
+                        benchlist.append(str(event.interaction.user.id))      
             if cid == "tentative":
                     remstuff(str(event.interaction.user.id))
                     tentativelist.append(str(event.interaction.user.id))
@@ -252,6 +287,11 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
                     defencenames = ""
                     for name in defencelist:
                         defencenames = defencenames + "**:shield:<@" + name + ">**" + "\n"
+                cannonnames = "Empty"
+                if len(cannonslist) != 0:
+                    cannonnames = ""
+                    for name in cannonslist:
+                        cannonnames = cannonnames + "**💣<@" + name + ">**" + "\n"
                 flexnames = "Empty"
                 if len(flexlist) != 0:
                     flexnames = ""
@@ -275,11 +315,13 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
                                 #user = await bot.rest.fetch_user(name)
                                 #await user.send("There is an available slot for war! First come first serve!")
                         benchnames = benchnames + "**<@" + name + ">**" + "\n"
-                embed.description = "<t:" + str(ctx.options.meetuptimestamp) + ":R>"
+                #print(convert_to_unix_timestamp(str(ctx.options.pdtmeetupdatetime)))
+                embed.description = "<t:" + str(convert_to_unix_timestamp(str(ctx.options.pdtmeetupdatetime))) + ":R>"
                 embed.description = embed.description + "\n:busts_in_silhouette:**" + str(len(mainballlist) + len(flexlist) + len(defencelist) + len(cannonslist)) + "/" + str(ctx.options.playercap) +"**"
-                embed.add_field(":crossed_swords:__Mainball__```" + str(len(mainballlist)) + "```", mainballnames, inline=True)
-                embed.add_field(":shield:__Defence__```" + str(len(defencelist)) + "```", defencenames, inline=True)
-                embed.add_field(":dagger:__Flex__```" + str(len(flexlist)) + "```", flexnames, inline=True)
+                embed.add_field(":crossed_swords:__Mainball__```" + str(len(mainballlist)) + "/" + str(ctx.options.mainballcap) + "```", mainballnames, inline=True)
+                embed.add_field(":shield:__Defence__```" + str(len(defencelist)) + "/" + str(ctx.options.defencecap) + "```", defencenames, inline=True)
+                embed.add_field(":dagger:__Flex__```" + str(len(flexlist)) + "/" + str(ctx.options.flexcap) + "```", flexnames, inline=True)
+                embed.add_field("💣__Cannons__```" + str(len(cannonslist)) + "/" + str(ctx.options.cannonscap) + "```", cannonnames, inline=True)
                 if len(benchlist)>0:
                     embed.add_field(":octagonal_sign:__Benched__```" + str(len(benchlist)) + "```", benchnames, inline=False)
                 embed.add_field("__Tentative__```" + str(len(tentativelist)) + "```", tentnames, inline=False)

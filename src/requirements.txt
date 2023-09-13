@@ -1,3 +1,5 @@
 hikari-lightbulb
 hikari
 asyncio
+pytz
+python-dateutil
