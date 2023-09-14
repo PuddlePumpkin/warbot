@@ -116,6 +116,22 @@ async def warsignups(ctx: lightbulb.SlashContext) -> None:
     except Exception:
         traceback.print_exc()
         await respond_with_autodelete("Sorry, something went wrong...",ctx)
+# ----------------------------------
+# load signups command
+# ----------------------------------
+@bdo.child
+@lightbulb.command("load", "load saved signups")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def loadsignups(ctx: lightbulb.SlashContext) -> None:
+    try:
+        f = open('config/signuplist.json', 'r')
+    except:
+        return
+    lists = json.load(f)
+    global mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist
+    mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist = lists
+    f.close()
+
 
 # ----------------------------------
 # autotimestamp
@@ -215,6 +231,14 @@ def remove_id_from_lists(ID):
             lst.remove(str(ID))
         except:
             pass
+def savelists():
+    lists = [mainballlist, flexlist, defencelist, tentativelist, absentlist, cannonslist, benchlist]
+    f = open('config/signuplist.json', 'w')
+    f.write(json.dumps(lists))
+    f.close()
+
+
+    
 def getplayercount() -> int:
     return len(mainballlist) + len(flexlist) + len(defencelist) + len(cannonslist)
 async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, message: hikari.Message, ctx: lightbulb.SlashContext = None, autodelete: bool = False) -> None:
@@ -254,6 +278,7 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
             if cid == "absent":
                     remove_id_from_lists(str(event.interaction.user.id))
                     absentlist.append(str(event.interaction.user.id))
+            savelists()
             try:
                 embed = hikari.Embed(title=ctx.options.embedtitle, colour=hikari.Colour(0x09ff00))
                 mainballnames = "Empty"
@@ -332,3 +357,12 @@ async def reboot(ctx: lightbulb.SlashContext) -> None:
 tasks.load(bot)
 bot.run()
 sys.exit()
+
+# ----------------------------------
+# Start Bot
+# ----------------------------------
+@bot.command
+@lightbulb.command("ping", "checks the bot is alive")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def ping(ctx: lightbulb.SlashContext) -> None:
+    await respond_with_autodelete("Pong!", ctx, 0x00ff1a)
