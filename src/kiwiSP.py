@@ -87,6 +87,7 @@ async def respond_with_autodelete(text: str, ctx: lightbulb.SlashContext, color=
 # war command
 # ----------------------------------
 @bdo.child
+@lightbulb.option("reloadfromfile", "reload signups from saved file", required=False, default=False, type=bool)
 @lightbulb.option("pdtmeetupdatetime", "PDT Day and time for meetup formatted like 12/24/2023 9:54 pm", required=True, type=str)
 @lightbulb.option("playercap", "max players across all teams", required=True, max_value=100, min_value=1, type=int)
 @lightbulb.option("mainballcap", "max players in mainball team", required=True, max_value=30, min_value=0, type=int)
@@ -107,6 +108,8 @@ async def warsignups(ctx: lightbulb.SlashContext) -> None:
         await respond_with_autodelete("Your id must be present in config/kiwiconfig.txt to use this command...", ctx)
         return
     try:
+        if(ctx.options.reloadfromfile):
+            loadfromfile()
         embed = hikari.Embed(title="Pending war (select team to refresh)", colour=hikari.Colour(0x09ff00))
         rows = await generate_rows(ctx.bot)
         response = await ctx.respond(embed, components=rows)
@@ -119,10 +122,7 @@ async def warsignups(ctx: lightbulb.SlashContext) -> None:
 # ----------------------------------
 # load signups command
 # ----------------------------------
-@bdo.child
-@lightbulb.command("load", "load saved signups")
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def loadsignups(ctx: lightbulb.SlashContext) -> None:
+def loadfromfile():
     try:
         f = open('config/signuplist.json', 'r')
     except:
@@ -131,6 +131,7 @@ async def loadsignups(ctx: lightbulb.SlashContext) -> None:
     global mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist
     mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist = lists
     f.close()
+    return
 
 
 # ----------------------------------
