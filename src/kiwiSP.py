@@ -257,28 +257,28 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
                         mainballlist.append(str(event.interaction.user.id))
                     else:
                         benchlist.append(str(event.interaction.user.id))
-            if cid == "defence":
+            elif cid == "defence":
                     remove_id_from_lists(str(event.interaction.user.id))
                     if len(defencelist) < ctx.options.defencecap and getplayercount()<ctx.options.playercap:
                         defencelist.append(str(event.interaction.user.id))
                     else:
                         benchlist.append(str(event.interaction.user.id))
-            if cid == "flex":
+            elif cid == "flex":
                     remove_id_from_lists(str(event.interaction.user.id))
                     if (len(flexlist) < ctx.options.flexcap) and getplayercount()<ctx.options.playercap:
                         flexlist.append(str(event.interaction.user.id))
                     else:
                         benchlist.append(str(event.interaction.user.id))
-            if cid == "cannons":
+            elif cid == "cannons":
                     remove_id_from_lists(str(event.interaction.user.id))
                     if (len(cannonslist) < ctx.options.cannonscap) and getplayercount()<ctx.options.playercap:
                         cannonslist.append(str(event.interaction.user.id))
                     else:
                         benchlist.append(str(event.interaction.user.id))      
-            if cid == "tentative":
+            elif cid == "tentative":
                     remove_id_from_lists(str(event.interaction.user.id))
                     tentativelist.append(str(event.interaction.user.id))
-            if cid == "absent":
+            elif cid == "absent":
                     remove_id_from_lists(str(event.interaction.user.id))
                     absentlist.append(str(event.interaction.user.id))
             savelists()
@@ -289,7 +289,6 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
                 traceback.print_exc()
             except hikari.NotFoundError:
                 pass
-                #await event.interaction.edit_initial_response(embed=embed)
     # after timer, remove buttons
     await message.edit(components=[])
 def generate_war_embed(ctx):
