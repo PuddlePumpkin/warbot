@@ -114,6 +114,7 @@ async def warsignups(ctx: lightbulb.SlashContext) -> None:
         await handle_responses(ctx.bot, ctx.author, ctx.member, message,ctx=ctx, autodelete=False)
         
     except Exception:
+        traceback.print_exc()
         await respond_with_autodelete("Sorry, something went wrong...",ctx)
 
 # ----------------------------------
