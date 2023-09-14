@@ -160,7 +160,7 @@ async def timetillwar(ctx: lightbulb.SlashContext) -> None:
 
 async def generate_rows(bot: lightbulb.BotApp):
     rows = []
-    row1 = bot.rest.build_action_row()
+    row1 = bot.rest.build_message_action_row()
     mainball = "Mainball"
     defence = "Defence"
     flex = "Flex"
@@ -174,7 +174,7 @@ async def generate_rows(bot: lightbulb.BotApp):
     row1.add_button(hikari.ButtonStyle.SECONDARY,
                    "flex").set_label(flex).add_to_container()
     rows.append(row1)
-    row2 = bot.rest.build_action_row()
+    row2 = bot.rest.build_message_action_row()
     row2.add_button(hikari.ButtonStyle.SECONDARY,
                    "cannons").set_label(cannons).add_to_container()
     row2.add_button(hikari.ButtonStyle.SECONDARY,
