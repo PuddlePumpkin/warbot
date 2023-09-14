@@ -208,35 +208,13 @@ tentativelist = []
 absentlist = []
 cannonslist = []
 benchlist = []
-def remstuff (nickname):
-    try:
-        mainballlist.remove(str(nickname))
-    except:
-        pass
-    try:
-        flexlist.remove(str(nickname))
-    except:
-        pass
-    try:
-        defencelist.remove(str(nickname))
-    except:
-        pass
-    try:
-        tentativelist.remove(str(nickname))
-    except:
-        pass
-    try:
-        absentlist.remove(str(nickname))
-    except:
-        pass
-    try:
-        cannonslist.remove(str(nickname))
-    except:
-        pass
-    try:
-        benchlist.remove(str(nickname))
-    except:
-        pass
+def remove_id_from_lists(ID):
+    lists = [mainballlist, flexlist, defencelist, tentativelist, absentlist, cannonslist, benchlist]
+    for lst in lists:
+        try:
+            lst.remove(str(ID))
+        except:
+            pass
 def getplayercount() -> int:
     return len(mainballlist) + len(flexlist) + len(defencelist) + len(cannonslist)
 async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, message: hikari.Message, ctx: lightbulb.SlashContext = None, autodelete: bool = False) -> None:
@@ -245,7 +223,7 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
         async for event in stream:
             cid = event.interaction.custom_id
             if cid == "mainball":
-                    remstuff(str(event.interaction.user.id))
+                    remove_id_from_lists(str(event.interaction.user.id))
                     if len(mainballlist) < ctx.options.mainballcap and getplayercount()<ctx.options.playercap:
                         mainballlist.append(str(event.interaction.user.id))
                     else:
@@ -253,28 +231,28 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
                         #await user.send("The war you attempted to join is full! You will receieve a message if a slot opens, its first come first serve when it does!")
                         benchlist.append(str(event.interaction.user.id))
             if cid == "defence":
-                    remstuff(str(event.interaction.user.id))
+                    remove_id_from_lists(str(event.interaction.user.id))
                     if len(defencelist) < ctx.options.defencecap and getplayercount()<ctx.options.playercap:
                         defencelist.append(str(event.interaction.user.id))
                     else:
                         benchlist.append(str(event.interaction.user.id))
             if cid == "flex":
-                    remstuff(str(event.interaction.user.id))
+                    remove_id_from_lists(str(event.interaction.user.id))
                     if (len(flexlist) < ctx.options.flexcap) and getplayercount()<ctx.options.playercap:
                         flexlist.append(str(event.interaction.user.id))
                     else:
                         benchlist.append(str(event.interaction.user.id))
             if cid == "cannons":
-                    remstuff(str(event.interaction.user.id))
+                    remove_id_from_lists(str(event.interaction.user.id))
                     if (len(cannonslist) < ctx.options.cannonscap) and getplayercount()<ctx.options.playercap:
                         cannonslist.append(str(event.interaction.user.id))
                     else:
                         benchlist.append(str(event.interaction.user.id))      
             if cid == "tentative":
-                    remstuff(str(event.interaction.user.id))
+                    remove_id_from_lists(str(event.interaction.user.id))
                     tentativelist.append(str(event.interaction.user.id))
             if cid == "absent":
-                    remstuff(str(event.interaction.user.id))
+                    remove_id_from_lists(str(event.interaction.user.id))
                     absentlist.append(str(event.interaction.user.id))
             try:
                 embed = hikari.Embed(title=ctx.options.embedtitle, colour=hikari.Colour(0x09ff00))
