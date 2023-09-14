@@ -85,3 +85,4 @@ tmp/stderr.txt
 tmp/stdout.txt
 start.sh
 startconda.bat
+config/signuplist.json
