@@ -386,13 +386,13 @@ def generate_war_embed(ctx):
         tentnames = ""
         for name in tentativelist:
             trimmedname = abbreviate_name(name[1])
-            tentnames = tentnames + "**" + trimmedname + "**" + "\n"  
+            tentnames = tentnames + "**⚖️" + trimmedname + "**" + "\n"  
     absentnames = "Empty"
     if len(absentlist) != 0:
         absentnames = ""
         for name in absentlist:
             trimmedname = abbreviate_name(name[1])
-            absentnames = absentnames + "**" + trimmedname + "**" + "\n"
+            absentnames = absentnames + "**❌" + trimmedname + "**" + "\n"
     benchnames = "Empty"
     if len(benchlist) != 0:
         benchnames = ""
@@ -401,14 +401,14 @@ def generate_war_embed(ctx):
             benchnames = benchnames + "**" + trimmedname + "**" + "\n"
     embed.description = "<t:" + str(convert_to_unix_timestamp(str(ctx.options.pdtmeetupdatetime))) + ":R>"
     embed.description = embed.description + "\n:busts_in_silhouette:**" + str(len(mainballlist) + len(flexlist) + len(defencelist) + len(cannonslist)) + "/" + str(ctx.options.playercap) +"**"
-    embed.add_field(":crossed_swords:__Mainball__```" + str(len(mainballlist)) + "/" + str(ctx.options.mainballcap) + "```", mainballnames, inline=True)
-    embed.add_field(":shield:__Defence__```" + str(len(defencelist)) + "/" + str(ctx.options.defencecap) + "```", defencenames, inline=True)
-    embed.add_field(":dagger:__Flex__```" + str(len(flexlist)) + "/" + str(ctx.options.flexcap) + "```", flexnames, inline=True)
+    embed.add_field("⚔️__Mainball__```" + str(len(mainballlist)) + "/" + str(ctx.options.mainballcap) + "```", mainballnames, inline=True)
+    embed.add_field("🛡️__Defence__```" + str(len(defencelist)) + "/" + str(ctx.options.defencecap) + "```", defencenames, inline=True)
+    embed.add_field("🗡️__Flex__```" + str(len(flexlist)) + "/" + str(ctx.options.flexcap) + "```", flexnames, inline=True)
     embed.add_field("💣__Cannons__```" + str(len(cannonslist)) + "/" + str(ctx.options.cannonscap) + "```", cannonnames, inline=True)
     if len(benchlist)>0:
         embed.add_field(":octagonal_sign:__Benched__```" + str(len(benchlist)) + "```", benchnames, inline=False)
-    embed.add_field("__Tentative__```" + str(len(tentativelist)) + "```", tentnames, inline=False)
-    embed.add_field("__Not Attending__```" + str(len(absentlist)) + "```", absentnames, inline=False)
+    embed.add_field("⚖️__Tentative__```" + str(len(tentativelist)) + "```", tentnames, inline=False)
+    embed.add_field("❌__Not Attending__```" + str(len(absentlist)) + "```", absentnames, inline=False)
     return embed
 # ----------------------------------
 # Reboot Command
