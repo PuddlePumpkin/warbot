@@ -1,22 +1,13 @@
 import asyncio
-from asyncio.subprocess import Process
-import gc
-from inspect import getmembers
 import pytz
 import json
 import os
-import random
 import shutil
 import sys
 import datetime
-import re
 import traceback
-import subprocess
-import time
-from io import BytesIO
 import hikari
 import lightbulb
-import requests
 import warnings
 from lightbulb.ext import tasks
 
@@ -107,13 +98,10 @@ benchlist = []
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def warsignups(ctx: lightbulb.SlashContext) -> None:
     try:
-        if str(ctx.author.id) not in get_admin_list():
-            await respond_with_autodelete("Your id must be present in config/kiwiconfig.txt to use this command...", ctx)
+        hasrole = await check_for_roles(ctx,[1152085844128178197,1120170416384790538])
+        if not hasrole:
+            await respond_with_autodelete("You must have staff role to use this command", ctx)
             return
-    except:
-        await respond_with_autodelete("Your id must be present in config/kiwiconfig.txt to use this command...", ctx)
-        return
-    try:
         global cannonslist,flexlist,mainballlist,tentativelist,absentlist,benchlist,defencelist
         lists = [cannonslist, flexlist, mainballlist, tentativelist, absentlist, benchlist, defencelist]
         for lst in lists:
@@ -242,8 +230,14 @@ def savelists():
     f.write(json.dumps(lists))
     f.close()
 
+async def check_for_roles(ctx, role_ids: list[int]) -> bool:
+    member = await bot.rest.fetch_member(ctx.guild_id, ctx.author.id)
+    roles = member.role_ids
+    for id in role_ids:
+        if id in roles:
+            return True
+    return False
 
-    
 def getplayercount() -> int:
     return len(mainballlist) + len(flexlist) + len(defencelist) + len(cannonslist)
 async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, message: hikari.Message, ctx: lightbulb.SlashContext = None, autodelete: bool = False) -> None:
@@ -346,12 +340,9 @@ def generate_war_embed(ctx):
 @lightbulb.command("reboot", "Force reboot kiwi")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def reboot(ctx: lightbulb.SlashContext) -> None:
-    try:
-        if str(ctx.author.id) not in get_admin_list():
-            await respond_with_autodelete("Your id must be present in config/kiwiconfig.txt to use this command...", ctx)
-            return
-    except:
-        await respond_with_autodelete("Your id must be present in config/kiwiconfig.txt to use this command...", ctx)
+    hasrole = await check_for_roles(ctx,[1152085844128178197,1120170416384790538])
+    if not hasrole:
+        await respond_with_autodelete("You must have staff role to use this command", ctx)
         return
     await ctx.respond("Rebooting",flags=hikari.MessageFlag.EPHEMERAL)
     await bot.close()
