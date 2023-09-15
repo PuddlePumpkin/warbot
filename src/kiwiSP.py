@@ -131,6 +131,10 @@ def loadfromfile():
 async def addplayer(ctx: lightbulb.SlashContext) -> None:
     global signups
     try:
+        hasrole = await check_for_roles(ctx,[1152085844128178197,1120170416384790538])
+        if not hasrole:
+            await ephemeral_respond("You must have staff role to use this command", ctx)
+            return
         int_list = [int(x) for x in ctx.options.idlist.split(',')]
         for id in int_list:
             id = str(id)
@@ -156,6 +160,10 @@ async def addplayer(ctx: lightbulb.SlashContext) -> None:
 async def benchplayer(ctx: lightbulb.SlashContext) -> None:
     global signups
     try:
+        hasrole = await check_for_roles(ctx,[1152085844128178197,1120170416384790538])
+        if not hasrole:
+            await ephemeral_respond("You must have staff role to use this command", ctx)
+            return
         if ctx.options.remove:
             signups.pop(ctx.options.id)
             savesignup(signups)
