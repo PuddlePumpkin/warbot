@@ -139,7 +139,7 @@ async def addplayer(ctx: lightbulb.SlashContext) -> None:
             if id in signups:
                 signups[id]['role'] = ctx.options.team
             else:
-                signups[id] = {"name": str(fetchedmember.display_name), "role": ctx.options.team, "time": (datetime.datetime.now() - epoch_time).total_seconds()}
+                signups[id] = {"name": str(fetchedmember.display_name), "role": ctx.options.team}
 
         await ephemeral_respond("Players added. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
         return
@@ -159,11 +159,12 @@ async def benchplayer(ctx: lightbulb.SlashContext) -> None:
     try:
         if ctx.options.remove:
             signups.pop(ctx.options.id)
+            savesignup(signups)
             await ephemeral_respond("Player removed, RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
         else:
             signups[ctx.options.id]["role"] = 'bench'
+            savesignup(signups)
             await ephemeral_respond("Player benched, RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
-        savesignup(signups)
     except:
         traceback.print_exc()
         await ephemeral_respond("Could not remove player..." ,ctx)
@@ -267,7 +268,7 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
             if userid in signups:
                 signups[userid]["role"] = cid
             else:
-                signups[userid] = {"name": str(interactionmember.display_name), "role": cid, "time": (datetime.datetime.now() - epoch_time).total_seconds()}
+                signups[userid] = {"name": str(interactionmember.display_name), "role": cid}
             savesignup(signups)
 
             try:
@@ -298,7 +299,6 @@ def generate_war_embed(ctx):
     global signups
 
     #Sort signups by earliest registration
-    singups = sorted(signups.items(), key = lambda x:x[1]['time'])
     count = 0
     for id in signups:
         name = abbreviate_name(signups[id]['name'])
@@ -352,7 +352,7 @@ def generate_war_embed(ctx):
     if len(tentativelist) != 0:
         tentnames = ""
         for name in tentativelist:
-            tentnames = tentnames + "**" + name + "**" + "\n"  
+            tentnames = tentnames + "**⚖️" + name + "**" + "\n"  
     absentnames = "Empty"
     if len(absentlist) != 0:
         absentnames = ""
@@ -362,7 +362,7 @@ def generate_war_embed(ctx):
     if len(benchlist) != 0:
         benchnames = ""
         for name in benchlist:
-            benchnames = benchnames + "**" + name + "**" + "\n"
+            benchnames = benchnames + "**🛑" + name + "**" + "\n"
     embed.description = "<t:" + str(convert_to_unix_timestamp(str(ctx.options.pdtmeetupdatetime))) + ":R>"
     embed.description = embed.description + "\n:busts_in_silhouette:**" + str(len(mainballlist) + len(flexlist) + len(defencelist) + len(cannonslist)) + "/" + str(ctx.options.playercap) +"**"
     embed.add_field("⚔️__Mainball__```" + str(len(mainballlist)) + "/" + str(ctx.options.mainballcap) + "```", mainballnames, inline=True)
@@ -370,7 +370,7 @@ def generate_war_embed(ctx):
     embed.add_field("🗡️__Flex__```" + str(len(flexlist)) + "/" + str(ctx.options.flexcap) + "```", flexnames, inline=True)
     embed.add_field("💣__Cannons__```" + str(len(cannonslist)) + "/" + str(ctx.options.cannonscap) + "```", cannonnames, inline=True)
     if len(benchlist)>0:
-        embed.add_field(":octagonal_sign:__Benched__```" + str(len(benchlist)) + "```", benchnames, inline=False)
+        embed.add_field("🛑__Benched__```" + str(len(benchlist)) + "```", benchnames, inline=False)
     embed.add_field("⚖️__Tentative__```" + str(len(tentativelist)) + "```", tentnames, inline=False)
     embed.add_field("❌__Not Attending__```" + str(len(absentlist)) + "```", absentnames, inline=False)
     return embed
