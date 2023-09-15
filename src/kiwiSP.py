@@ -76,7 +76,6 @@ async def ephemeral_respond(text: str, ctx: lightbulb.SlashContext, color=0xff00
     await ctx.respond(text, flags=hikari.MessageFlag.EPHEMERAL)
 
 signups = {}
-
 # ----------------------------------
 # war command
 # ----------------------------------
@@ -127,7 +126,7 @@ def loadfromfile():
 @bdo.child
 @lightbulb.option("team", "which team to add to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
 @lightbulb.option("idlist", "ID or ids separated by commas", required=True, type=str)
-@lightbulb.command("addplayers", "manually add players")
+@lightbulb.command("addplayers", "manually add or update or move players")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def addplayer(ctx: lightbulb.SlashContext) -> None:
     global signups
@@ -183,31 +182,6 @@ def convert_to_unix_timestamp(date_time_str):
     unix_timestamp = int(date_time_obj.timestamp())
 
     return unix_timestamp
-
-# ----------------------------------
-# war time command
-# ----------------------------------
-@bdo.child
-@lightbulb.command("timetillwar", "How long until today's war")
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def timetillwar(ctx: lightbulb.SlashContext) -> None:
-    try:
-            # Get the current time
-            current_time = datetime.datetime.now()
-
-            # Set the target time to 7:45 PM
-            target_time = current_time.replace(hour=19, minute=45, second=0, microsecond=0)
-
-            # Calculate the time difference
-            time_difference = target_time - current_time
-
-            # Extract hours and minutes from the time difference
-            hours, seconds = divmod(time_difference.seconds, 3600)
-            minutes = seconds // 60
-            await ctx.respond(f"Time remaining until war: **{hours} hours and {minutes} minutes.**",flags=hikari.MessageFlag.EPHEMERAL)
-    except Exception:
-        traceback.print_exc()
-        await ephemeral_respond("Sorry, something went wrong...",ctx)
 
 async def generate_rows(bot: lightbulb.BotApp):
     rows = []
