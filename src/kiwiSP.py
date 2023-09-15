@@ -284,14 +284,15 @@ def generate_war_embed(ctx):
         if signups[id]["role"] == "absent":
             absentlist.append(name)
             continue
+        if signups[id]["role"] == "tentative":
+            tentativelist.append(name)
+            continue
         if signups[id]["role"] == "bench":
             benchlist.append(name)
             continue
 
         if count >= ctx.options.playercap:
             benchlist.append(name)
-        elif signups[id]["role"] == "tentative" and len(tentativelist) < ctx.options.defencecap:
-            tentativelist.append(name)
         elif signups[id]["role"] == "mainball" and len(mainballlist) < ctx.options.mainballcap:
             mainballlist.append(name)
         elif signups[id]["role"] == "defence" and len(defencelist) < ctx.options.defencecap:
