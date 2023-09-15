@@ -59,7 +59,7 @@ async def ready_listener(_):
 @lightbulb.command("ping", "checks the bot is alive")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def ping(ctx: lightbulb.SlashContext) -> None:
-    await respond_with_autodelete("Pong!", ctx, 0x00ff1a)
+    await ephemeral_respond("Pong!", ctx, 0x00ff1a)
 
 
 # ----------------------------------
@@ -71,7 +71,7 @@ async def ping(ctx: lightbulb.SlashContext) -> None:
 async def bdo(ctx: lightbulb.Context) -> None:
     await ctx.respond("invoked main bdo")
 
-async def respond_with_autodelete(text: str, ctx: lightbulb.SlashContext, color=0xff0015):
+async def ephemeral_respond(text: str, ctx: lightbulb.SlashContext, color=0xff0015):
     '''Generate an embed and respond to the context with the input text'''
     await ctx.respond(text, flags=hikari.MessageFlag.EPHEMERAL)
 mainballlist = []
@@ -100,7 +100,7 @@ async def warsignups(ctx: lightbulb.SlashContext) -> None:
     try:
         hasrole = await check_for_roles(ctx,[1152085844128178197,1120170416384790538])
         if not hasrole:
-            await respond_with_autodelete("You must have staff role to use this command", ctx)
+            await ephemeral_respond("You must have staff role to use this command", ctx)
             return
         global cannonslist,flexlist,mainballlist,tentativelist,absentlist,benchlist,defencelist
         lists = [cannonslist, flexlist, mainballlist, tentativelist, absentlist, benchlist, defencelist]
@@ -116,7 +116,7 @@ async def warsignups(ctx: lightbulb.SlashContext) -> None:
         
     except Exception:
         traceback.print_exc()
-        await respond_with_autodelete("Sorry, something went wrong...",ctx)
+        await ephemeral_respond("Sorry, something went wrong...",ctx)
 # ----------------------------------
 # load signups command
 # ----------------------------------
@@ -131,6 +131,71 @@ def loadfromfile():
     f.close()
     return
 
+# ----------------------------------
+# Remove member command
+# ----------------------------------
+@bdo.child
+@lightbulb.option("remove", "completely remove player from any team and do not bench them", required=False, default=False, type=bool)
+@lightbulb.option("id", "ID (right click their name on member list to copy id)", required=True, type=str)
+@lightbulb.command("benchplayer", "Remove or bench a player")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def benchplayer(ctx: lightbulb.SlashContext) -> None:
+    global mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist
+    try:
+        if ctx.options.remove:  
+            remove_id_from_lists(ctx.options.id)
+            savelists()
+            await ephemeral_respond("Player removed. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
+            return
+        else:
+            for item_list in [mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist]:
+                for item in item_list:
+                    if item[0] == ctx.options.id:
+                        cpy = item
+                        remove_id_from_lists(ctx.options.id)
+                        benchlist.append(cpy)
+                        await ephemeral_respond("Player benched. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
+                        return
+    except:
+        await ephemeral_respond("Could not find or remove player..." ,ctx)
+    
+# ----------------------------------
+# add member command
+# ----------------------------------
+@bdo.child
+@lightbulb.option("team", "which team to add to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
+@lightbulb.option("idlist", "ID or ids separated by commas", required=True, type=str)
+@lightbulb.command("addplayers", "manually add players")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def benchplayer(ctx: lightbulb.SlashContext) -> None:
+    global mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist
+    try:
+        int_list = [int(x) for x in ctx.options.idlist.split(',')]
+        for id in int_list:
+                    fetchedmember = await bot.rest.fetch_member(ctx.guild_id, id)
+                    try:
+                        remove_id_from_lists(str(id))
+                    except:
+                        pass
+                    if ctx.options.team == "mainball":
+                        mainballlist.append([str(id),str(fetchedmember.display_name)])
+                    elif ctx.options.team == "defence":
+                        defencelist.append([str(id),str(fetchedmember.display_name)])
+                    elif ctx.options.team == "flex":
+                        flexlist.append([str(id),str(fetchedmember.display_name)])
+                    elif ctx.options.team == "cannons":
+                        cannonslist.append([str(id),str(fetchedmember.display_name)])
+                    elif ctx.options.team == "bench":
+                        benchlist.append([str(id),str(fetchedmember.display_name)])
+                    elif ctx.options.team == "tentative":
+                        tentativelist.append([str(id),str(fetchedmember.display_name)])
+                    elif ctx.options.team == "absent":
+                        absentlist.append([str(id),str(fetchedmember.display_name)])
+                    
+        await ephemeral_respond("Players added. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
+        return
+    except:
+        await ephemeral_respond("something went wrong..." ,ctx)
 
 # ----------------------------------
 # autotimestamp
@@ -171,7 +236,7 @@ async def timetillwar(ctx: lightbulb.SlashContext) -> None:
             await ctx.respond(f"Time remaining until war: **{hours} hours and {minutes} minutes.**",flags=hikari.MessageFlag.EPHEMERAL)
     except Exception:
         traceback.print_exc()
-        await respond_with_autodelete("Sorry, something went wrong...",ctx)
+        await ephemeral_respond("Sorry, something went wrong...",ctx)
 
 async def generate_rows(bot: lightbulb.BotApp):
     rows = []
@@ -219,6 +284,7 @@ def remove_id_from_lists(ID):
                 lst.remove(item)
         
 def savelists():
+    global mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist
     lists = [mainballlist, flexlist, defencelist, tentativelist, absentlist, cannonslist, benchlist]
     f = open('config/signuplist.json', 'w')
     f.write(json.dumps(lists))
@@ -353,7 +419,7 @@ def generate_war_embed(ctx):
 async def reboot(ctx: lightbulb.SlashContext) -> None:
     hasrole = await check_for_roles(ctx,[1152085844128178197,1120170416384790538])
     if not hasrole:
-        await respond_with_autodelete("You must have staff role to use this command", ctx)
+        await ephemeral_respond("You must have staff role to use this command", ctx)
         return
     await ctx.respond("Rebooting",flags=hikari.MessageFlag.EPHEMERAL)
     await bot.close()
