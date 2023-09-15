@@ -247,10 +247,7 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
             cid = event.interaction.custom_id
             interactionmember = await bot.rest.fetch_member(ctx.guild_id, event.interaction.user.id)
             userid = str(event.interaction.user.id)
-            if userid in signups:
-                signups[userid]["role"] = cid
-            else:
-                signups[userid] = {"name": str(interactionmember.display_name), "role": cid}
+            signups[userid] = {"name": str(interactionmember.display_name), "role": cid}
             savesignup(signups)
 
             try:
