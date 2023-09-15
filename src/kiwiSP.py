@@ -126,7 +126,7 @@ def loadfromfile():
 @bdo.child
 @lightbulb.option("team", "which team to add to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
 @lightbulb.option("idlist", "ID or ids separated by commas", required=True, type=str)
-@lightbulb.command("addplayers", "manually add or update or move players")
+@lightbulb.command("addplayers", "manually add or move players")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def addplayer(ctx: lightbulb.SlashContext) -> None:
     global signups
