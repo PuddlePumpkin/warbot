@@ -8,6 +8,7 @@ import datetime
 import traceback
 import hikari
 import lightbulb
+import random
 import warnings
 from lightbulb.ext import tasks
 epoch_time = datetime.datetime(1970, 1, 1)
@@ -81,10 +82,10 @@ signups = {}
 # ----------------------------------
 @bdo.child
 @lightbulb.option("reloadfromfile", "reload signups from saved file", required=False, default=False, type=bool)
-@lightbulb.option("cannonscap", "max players on cannon team", required=True, max_value=40, min_value=0, type=int)
-@lightbulb.option("flexcap", "max players in flex team", required=True, max_value=40, min_value=0, type=int)
-@lightbulb.option("defencecap", "max players in defence team", required=True, max_value=40, min_value=0, type=int)
-@lightbulb.option("mainballcap", "max players in mainball team", required=True, max_value=40, min_value=0, type=int)
+@lightbulb.option("cannonscap", "max players on cannon team", required=True, max_value=90, min_value=0, type=int)
+@lightbulb.option("flexcap", "max players in flex team", required=True, max_value=90, min_value=0, type=int)
+@lightbulb.option("defencecap", "max players in defence team", required=True, max_value=90, min_value=0, type=int)
+@lightbulb.option("mainballcap", "max players in mainball team", required=True, max_value=90, min_value=0, type=int)
 @lightbulb.option("playercap", "max players across all teams", required=True, max_value=100, min_value=1, type=int)
 @lightbulb.option("pdtmeetupdatetime", "PDT Day and time for meetup formatted like 12/24/2023 9:54 pm", required=True, type=str)
 @lightbulb.option("embedtitle", "title to show at top of embed", required=False, default = "NODE WAR", type=str)
@@ -247,6 +248,8 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
             cid = event.interaction.custom_id
             interactionmember = await bot.rest.fetch_member(ctx.guild_id, event.interaction.user.id)
             userid = str(event.interaction.user.id)
+            #for duplicate name tests
+            #userid = int(random.randrange(1,500000))
             signups[userid] = {"name": str(interactionmember.display_name), "role": cid}
             savesignup(signups)
 
@@ -260,11 +263,13 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
     # after timer, remove buttons
     await message.edit(components=[])
 
-def abbreviate_name(name: str) -> str:
-    if len(name) <= 15:
+def abbreviate_name(name: str, maxlen) -> str:
+    if maxlen>17:
+        maxlen = 17
+    if len(name) <= maxlen:
         return name
     else:
-        return name[:15] + "..."
+        return name[:maxlen] + "…"
     
 def generate_war_embed(ctx):
     embed = hikari.Embed(title=ctx.options.embedtitle, colour=hikari.Colour(0x09ff00))
@@ -279,8 +284,12 @@ def generate_war_embed(ctx):
 
     #Sort signups by earliest registration
     count = 0
+    playerlen = len(signups)
+    if playerlen == 0:
+        playerlen = 1
+    maxnamelen=1024/playerlen-6
     for id in signups:
-        name = abbreviate_name(signups[id]['name'])
+        name = abbreviate_name(signups[id]['name'],int(maxnamelen))
         if signups[id]["role"] == "absent":
             absentlist.append(name)
             continue
@@ -295,16 +304,19 @@ def generate_war_embed(ctx):
             benchlist.append(name)
         elif signups[id]["role"] == "mainball" and len(mainballlist) < ctx.options.mainballcap:
             mainballlist.append(name)
+            count = count + 1
         elif signups[id]["role"] == "defence" and len(defencelist) < ctx.options.defencecap:
             defencelist.append(name)
+            count = count + 1
         elif signups[id]["role"] == "flex" and len(flexlist) < ctx.options.flexcap:
             flexlist.append(name)
+            count = count + 1
         elif signups[id]["role"] == "cannons" and len(cannonslist) < ctx.options.cannonscap:
             cannonslist.append(name)
+            count = count + 1
         else:
             benchlist.append(name)
             
-        count = count + 1
 
 
 
