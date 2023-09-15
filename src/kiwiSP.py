@@ -10,7 +10,7 @@ import hikari
 import lightbulb
 import warnings
 from lightbulb.ext import tasks
-
+epoch_time = datetime.datetime(1970, 1, 1)
 os.chdir(str(os.path.abspath(os.path.dirname(os.path.dirname(__file__)))))
 
 # ----------------------------------
@@ -74,13 +74,8 @@ async def bdo(ctx: lightbulb.Context) -> None:
 async def ephemeral_respond(text: str, ctx: lightbulb.SlashContext, color=0xff0015):
     '''Generate an embed and respond to the context with the input text'''
     await ctx.respond(text, flags=hikari.MessageFlag.EPHEMERAL)
-mainballlist = []
-flexlist = []
-defencelist = []
-tentativelist = []
-absentlist = []
-cannonslist = []
-benchlist = []
+
+signups = {}
 
 # ----------------------------------
 # war command
@@ -102,10 +97,8 @@ async def warsignups(ctx: lightbulb.SlashContext) -> None:
         if not hasrole:
             await ephemeral_respond("You must have staff role to use this command", ctx)
             return
-        global cannonslist,flexlist,mainballlist,tentativelist,absentlist,benchlist,defencelist
-        lists = [cannonslist, flexlist, mainballlist, tentativelist, absentlist, benchlist, defencelist]
-        for lst in lists:
-            lst.clear()
+        global signups
+        signups = {}
         if(ctx.options.reloadfromfile):
             loadfromfile()
         embed = generate_war_embed(ctx)
@@ -113,7 +106,7 @@ async def warsignups(ctx: lightbulb.SlashContext) -> None:
         response = await ctx.respond(embed, components=rows)
         message = await response.message()
         await handle_responses(ctx.bot, ctx.author, ctx.member, message,ctx=ctx, autodelete=False)
-        
+
     except Exception:
         traceback.print_exc()
         await ephemeral_respond("Sorry, something went wrong...",ctx)
@@ -121,15 +114,37 @@ async def warsignups(ctx: lightbulb.SlashContext) -> None:
 # load signups command
 # ----------------------------------
 def loadfromfile():
+    global signups
     try:
         f = open('config/signuplist.json', 'r')
     except:
         return
-    lists = json.load(f)
-    global mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist
-    mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist = lists
-    f.close()
-    return
+    signups = json.load(f)
+
+# ----------------------------------
+# add member command
+# ----------------------------------
+@bdo.child
+@lightbulb.option("team", "which team to add to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
+@lightbulb.option("idlist", "ID or ids separated by commas", required=True, type=str)
+@lightbulb.command("addplayers", "manually add players")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def addplayer(ctx: lightbulb.SlashContext) -> None:
+    global signups
+    try:
+        int_list = [int(x) for x in ctx.options.idlist.split(',')]
+        for id in int_list:
+            id = str(id)
+            fetchedmember = await bot.rest.fetch_member(ctx.guild_id, id)
+            if id in signups:
+                signups[id]['role'] = ctx.options.team
+            else:
+                signups[id] = {"name": str(fetchedmember.display_name), "role": ctx.options.team, "time": (datetime.datetime.now() - epoch_time).total_seconds()}
+
+        await ephemeral_respond("Players added. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
+        return
+    except:
+        await ephemeral_respond("something went wrong..." ,ctx)
 
 # ----------------------------------
 # Remove member command
@@ -140,63 +155,18 @@ def loadfromfile():
 @lightbulb.command("benchplayer", "Remove or bench a player")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def benchplayer(ctx: lightbulb.SlashContext) -> None:
-    global mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist
+    global signups
     try:
-        if ctx.options.remove:  
-            remove_id_from_lists(ctx.options.id)
-            savelists()
-            await ephemeral_respond("Player removed. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
-            return
+        if ctx.options.remove:
+            signups.pop(ctx.options.id)
+            await ephemeral_respond("Player removed, RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
         else:
-            for item_list in [mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist]:
-                for item in item_list:
-                    if item[0] == ctx.options.id:
-                        cpy = item
-                        remove_id_from_lists(ctx.options.id)
-                        benchlist.append(cpy)
-                        await ephemeral_respond("Player benched. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
-                        return
+            signups[ctx.options.id]["role"] = 'bench'
+            await ephemeral_respond("Player benched, RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
+        savesignup(signups)
     except:
-        await ephemeral_respond("Could not find or remove player..." ,ctx)
-    
-# ----------------------------------
-# add member command
-# ----------------------------------
-@bdo.child
-@lightbulb.option("team", "which team to add to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
-@lightbulb.option("idlist", "ID or ids separated by commas", required=True, type=str)
-@lightbulb.command("addplayers", "manually add players")
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def benchplayer(ctx: lightbulb.SlashContext) -> None:
-    global mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist
-    try:
-        int_list = [int(x) for x in ctx.options.idlist.split(',')]
-        for id in int_list:
-                    fetchedmember = await bot.rest.fetch_member(ctx.guild_id, id)
-                    try:
-                        remove_id_from_lists(str(id))
-                    except:
-                        pass
-                    if ctx.options.team == "mainball":
-                        mainballlist.append([str(id),str(fetchedmember.display_name)])
-                    elif ctx.options.team == "defence":
-                        defencelist.append([str(id),str(fetchedmember.display_name)])
-                    elif ctx.options.team == "flex":
-                        flexlist.append([str(id),str(fetchedmember.display_name)])
-                    elif ctx.options.team == "cannons":
-                        cannonslist.append([str(id),str(fetchedmember.display_name)])
-                    elif ctx.options.team == "bench":
-                        benchlist.append([str(id),str(fetchedmember.display_name)])
-                    elif ctx.options.team == "tentative":
-                        tentativelist.append([str(id),str(fetchedmember.display_name)])
-                    elif ctx.options.team == "absent":
-                        absentlist.append([str(id),str(fetchedmember.display_name)])
-                    
-        await ephemeral_respond("Players added. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
-        return
-    except:
-        await ephemeral_respond("something went wrong..." ,ctx)
-
+        traceback.print_exc()
+        await ephemeral_respond("Could not remove player..." ,ctx)
 # ----------------------------------
 # autotimestamp
 # ----------------------------------
@@ -241,24 +211,20 @@ async def timetillwar(ctx: lightbulb.SlashContext) -> None:
 async def generate_rows(bot: lightbulb.BotApp):
     rows = []
     row1 = bot.rest.build_message_action_row()
-    mainball = "Mainball"
-    defence = "Defence"
-    flex = "Flex"
-    tent = "Tentative"
-    absent = "Absent"
-    cannons = "Cannons"
-    row1.add_interactive_button(hikari.ButtonStyle.SECONDARY,"mainball",label=mainball)
-    row1.add_interactive_button(hikari.ButtonStyle.SECONDARY,"defence",label=defence)
-    row1.add_interactive_button(hikari.ButtonStyle.SECONDARY,"flex",label=flex)
+    row1.add_interactive_button(hikari.ButtonStyle.SECONDARY, "mainball", label = "Mainball")
+    row1.add_interactive_button(hikari.ButtonStyle.SECONDARY, "defence", label = "Defence")
+    row1.add_interactive_button(hikari.ButtonStyle.SECONDARY, "flex", label = "Flex")
     rows.append(row1)
     row2 = bot.rest.build_message_action_row()
-    row2.add_interactive_button(hikari.ButtonStyle.SECONDARY,"cannons",label=cannons)
-    row2.add_interactive_button(hikari.ButtonStyle.SECONDARY,"tentative",label=tent)
-    row2.add_interactive_button(hikari.ButtonStyle.SECONDARY,"absent",label=absent)
+    row2.add_interactive_button(hikari.ButtonStyle.SECONDARY, "cannons", label = "Cannons")
+    row2.add_interactive_button(hikari.ButtonStyle.SECONDARY, "tentative", label = "Tentative")
+    row2.add_interactive_button(hikari.ButtonStyle.SECONDARY, "absent", label = "Absent")
     rows.append(row2)
     return rows
 if not os.path.exists(str("config/kiwiconfig.json")):
         shutil.copy2("config/kiwiconfigdefault.json", "config/kiwiconfig.json")
+
+        
 # ----------------------------------
 # Configs
 # ----------------------------------
@@ -276,18 +242,9 @@ def get_admin_list() -> list:
     global config
     return config["AdminList"].replace(", ", "").replace(" ,", "").replace(" , ", "").split(",")
 
-def remove_id_from_lists(ID):
-    lists = [mainballlist, flexlist, defencelist, tentativelist, absentlist, cannonslist, benchlist]
-    for lst in lists:
-        for item in lst:
-            if item[0] == ID:
-                lst.remove(item)
-        
-def savelists():
-    global mainballlist,flexlist,defencelist,tentativelist,absentlist,cannonslist,benchlist
-    lists = [mainballlist, flexlist, defencelist, tentativelist, absentlist, cannonslist, benchlist]
+def savesignup(signups):
     f = open('config/signuplist.json', 'w')
-    f.write(json.dumps(lists))
+    f.write(json.dumps(signups))
     f.close()
 
 async def check_for_roles(ctx, role_ids):
@@ -299,46 +256,20 @@ async def check_for_roles(ctx, role_ids):
     return False
 
 def getplayercount() -> int:
-    return len(mainballlist) + len(flexlist) + len(defencelist) + len(cannonslist)
+    return len(signups)
 async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, message: hikari.Message, ctx: lightbulb.SlashContext = None, autodelete: bool = False) -> None:
     """Watches for events, and handles responding to them."""
     with bot.stream(hikari.InteractionCreateEvent, 604800).filter(lambda e: (isinstance(e.interaction, hikari.ComponentInteraction) and e.interaction.message == message)) as stream:
         async for event in stream:
             cid = event.interaction.custom_id
             interactionmember = await bot.rest.fetch_member(ctx.guild_id, event.interaction.user.id)
-            
-            if cid == "mainball":
-                    remove_id_from_lists(str(event.interaction.user.id))
-                    if len(mainballlist) < ctx.options.mainballcap and getplayercount()<ctx.options.playercap:
-            
-                        mainballlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
-                    else:
-                        benchlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
-            elif cid == "defence":
-                    remove_id_from_lists(str(event.interaction.user.id))
-                    if len(defencelist) < ctx.options.defencecap and getplayercount()<ctx.options.playercap:
-                        defencelist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
-                    else:
-                        benchlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
-            elif cid == "flex":
-                    remove_id_from_lists(str(event.interaction.user.id))
-                    if (len(flexlist) < ctx.options.flexcap) and getplayercount()<ctx.options.playercap:
-                        flexlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
-                    else:
-                        benchlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
-            elif cid == "cannons":
-                    remove_id_from_lists(str(event.interaction.user.id))
-                    if (len(cannonslist) < ctx.options.cannonscap) and getplayercount()<ctx.options.playercap:
-                        cannonslist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
-                    else:
-                        benchlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])      
-            elif cid == "tentative":
-                    remove_id_from_lists(str(event.interaction.user.id))
-                    tentativelist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
-            elif cid == "absent":
-                    remove_id_from_lists(str(event.interaction.user.id))
-                    absentlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
-            savelists()
+            userid = str(event.interaction.user.id)
+            if userid in signups:
+                signups[userid]["role"] = cid
+            else:
+                signups[userid] = {"name": str(interactionmember.display_name), "role": cid, "time": (datetime.datetime.now() - epoch_time).total_seconds()}
+            savesignup(signups)
+
             try:
                 embed = generate_war_embed(ctx)
                 await event.interaction.create_initial_response(hikari.ResponseType.MESSAGE_UPDATE, embed=embed)
@@ -357,48 +288,81 @@ def abbreviate_name(name: str) -> str:
     
 def generate_war_embed(ctx):
     embed = hikari.Embed(title=ctx.options.embedtitle, colour=hikari.Colour(0x09ff00))
+    mainballlist = []
+    defencelist=[]
+    flexlist = []
+    cannonslist = []
+    absentlist = []
+    benchlist = []
+    tentativelist = []
+    global signups
+
+    #Sort signups by earliest registration
+    singups = sorted(signups.items(), key = lambda x:x[1]['time'])
+    count = 0
+    for id in signups:
+        name = abbreviate_name(signups[id]['name'])
+        if signups[id]["role"] == "absent":
+            absentlist.append(name)
+            continue
+        if signups[id]["role"] == "bench":
+            benchlist.append(name)
+            continue
+
+        if count >= ctx.options.playercap:
+            benchlist.append(name)
+        elif signups[id]["role"] == "tentative" and len(tentativelist) < ctx.options.defencecap:
+            tentativelist.append(name)
+        elif signups[id]["role"] == "mainball" and len(mainballlist) < ctx.options.mainballcap:
+            mainballlist.append(name)
+        elif signups[id]["role"] == "defence" and len(defencelist) < ctx.options.defencecap:
+            defencelist.append(name)
+        elif signups[id]["role"] == "flex" and len(flexlist) < ctx.options.flexcap:
+            flexlist.append(name)
+        elif signups[id]["role"] == "cannons" and len(cannonslist) < ctx.options.cannonscap:
+            cannonslist.append(name)
+        else:
+            benchlist.append(name)
+            
+        count = count + 1
+
+
+
     mainballnames = "Empty"
     if len(mainballlist) != 0:
         mainballnames = ""
         for name in mainballlist:
-            trimmedname = abbreviate_name(name[1])
-            mainballnames = mainballnames + "**⚔️" + trimmedname + "**" + "\n"
+            mainballnames = mainballnames + "**⚔️" + name + "**" + "\n"
     defencenames = "Empty"
     if len(defencelist) != 0:
         defencenames = ""
         for name in defencelist:
-            trimmedname = abbreviate_name(name[1])
-            defencenames = defencenames + "**🛡️" + trimmedname + "**" + "\n"
+            defencenames = defencenames + "**🛡️" + name + "**" + "\n"
     cannonnames = "Empty"
     if len(cannonslist) != 0:
         cannonnames = ""
         for name in cannonslist:
-            trimmedname = abbreviate_name(name[1])
-            cannonnames = cannonnames + "**💣" + trimmedname + "**" + "\n"
+            cannonnames = cannonnames + "**💣" + name + "**" + "\n"
     flexnames = "Empty"
     if len(flexlist) != 0:
         flexnames = ""
         for name in flexlist:
-            trimmedname = abbreviate_name(name[1])
-            flexnames = flexnames + "**🗡️" + trimmedname + "**" + "\n"
+            flexnames = flexnames + "**🗡️" + name + "**" + "\n"
     tentnames = "Empty"
     if len(tentativelist) != 0:
         tentnames = ""
         for name in tentativelist:
-            trimmedname = abbreviate_name(name[1])
-            tentnames = tentnames + "**⚖️" + trimmedname + "**" + "\n"  
+            tentnames = tentnames + "**" + name + "**" + "\n"  
     absentnames = "Empty"
     if len(absentlist) != 0:
         absentnames = ""
         for name in absentlist:
-            trimmedname = abbreviate_name(name[1])
-            absentnames = absentnames + "**❌" + trimmedname + "**" + "\n"
+            absentnames = absentnames + "**❌" + name + "**" + "\n"
     benchnames = "Empty"
     if len(benchlist) != 0:
         benchnames = ""
         for name in benchlist:
-            trimmedname = abbreviate_name(name[1])
-            benchnames = benchnames + "**" + trimmedname + "**" + "\n"
+            benchnames = benchnames + "**" + name + "**" + "\n"
     embed.description = "<t:" + str(convert_to_unix_timestamp(str(ctx.options.pdtmeetupdatetime))) + ":R>"
     embed.description = embed.description + "\n:busts_in_silhouette:**" + str(len(mainballlist) + len(flexlist) + len(defencelist) + len(cannonslist)) + "/" + str(ctx.options.playercap) +"**"
     embed.add_field("⚔️__Mainball__```" + str(len(mainballlist)) + "/" + str(ctx.options.mainballcap) + "```", mainballnames, inline=True)
