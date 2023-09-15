@@ -1,5 +1,4 @@
-hikari-lightbulb == 2.2.5
-hikari == 2.0.0.dev111
+hikari-lightbulb == 2.3.3
 asyncio
 pytz
 python-dateutil

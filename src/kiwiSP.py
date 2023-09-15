@@ -87,10 +87,10 @@ benchlist = []
 # ----------------------------------
 @bdo.child
 @lightbulb.option("reloadfromfile", "reload signups from saved file", required=False, default=False, type=bool)
-@lightbulb.option("cannonscap", "max players on cannon team", required=True, max_value=30, min_value=0, type=int)
-@lightbulb.option("flexcap", "max players in flex team", required=True, max_value=30, min_value=0, type=int)
-@lightbulb.option("defencecap", "max players in defence team", required=True, max_value=30, min_value=0, type=int)
-@lightbulb.option("mainballcap", "max players in mainball team", required=True, max_value=30, min_value=0, type=int)
+@lightbulb.option("cannonscap", "max players on cannon team", required=True, max_value=40, min_value=0, type=int)
+@lightbulb.option("flexcap", "max players in flex team", required=True, max_value=40, min_value=0, type=int)
+@lightbulb.option("defencecap", "max players in defence team", required=True, max_value=40, min_value=0, type=int)
+@lightbulb.option("mainballcap", "max players in mainball team", required=True, max_value=40, min_value=0, type=int)
 @lightbulb.option("playercap", "max players across all teams", required=True, max_value=100, min_value=1, type=int)
 @lightbulb.option("pdtmeetupdatetime", "PDT Day and time for meetup formatted like 12/24/2023 9:54 pm", required=True, type=str)
 @lightbulb.option("embedtitle", "title to show at top of embed", required=False, default = "NODE WAR", type=str)
@@ -175,27 +175,21 @@ async def timetillwar(ctx: lightbulb.SlashContext) -> None:
 
 async def generate_rows(bot: lightbulb.BotApp):
     rows = []
-    row1 = bot.rest.build_action_row()
+    row1 = bot.rest.build_message_action_row()
     mainball = "Mainball"
     defence = "Defence"
     flex = "Flex"
     tent = "Tentative"
     absent = "Absent"
     cannons = "Cannons"
-    row1.add_button(hikari.ButtonStyle.SECONDARY,
-                   "mainball").set_label(mainball).add_to_container()
-    row1.add_button(hikari.ButtonStyle.SECONDARY,
-                   "defence").set_label(defence).add_to_container()
-    row1.add_button(hikari.ButtonStyle.SECONDARY,
-                   "flex").set_label(flex).add_to_container()
+    row1.add_interactive_button(hikari.ButtonStyle.SECONDARY,"mainball",label=mainball)
+    row1.add_interactive_button(hikari.ButtonStyle.SECONDARY,"defence",label=defence)
+    row1.add_interactive_button(hikari.ButtonStyle.SECONDARY,"flex",label=flex)
     rows.append(row1)
-    row2 = bot.rest.build_action_row()
-    row2.add_button(hikari.ButtonStyle.SECONDARY,
-                   "cannons").set_label(cannons).add_to_container()
-    row2.add_button(hikari.ButtonStyle.SECONDARY,
-                   "tentative").set_label(tent).add_to_container()
-    row2.add_button(hikari.ButtonStyle.SECONDARY,
-                   "absent").set_label(absent).add_to_container()
+    row2 = bot.rest.build_message_action_row()
+    row2.add_interactive_button(hikari.ButtonStyle.SECONDARY,"cannons",label=cannons)
+    row2.add_interactive_button(hikari.ButtonStyle.SECONDARY,"tentative",label=tent)
+    row2.add_interactive_button(hikari.ButtonStyle.SECONDARY,"absent",label=absent)
     rows.append(row2)
     return rows
 if not os.path.exists(str("config/kiwiconfig.json")):
@@ -220,17 +214,17 @@ def get_admin_list() -> list:
 def remove_id_from_lists(ID):
     lists = [mainballlist, flexlist, defencelist, tentativelist, absentlist, cannonslist, benchlist]
     for lst in lists:
-        try:
-            lst.remove(str(ID))
-        except:
-            pass
+        for item in lst:
+            if item[0] == ID:
+                lst.remove(item)
+        
 def savelists():
     lists = [mainballlist, flexlist, defencelist, tentativelist, absentlist, cannonslist, benchlist]
     f = open('config/signuplist.json', 'w')
     f.write(json.dumps(lists))
     f.close()
 
-async def check_for_roles(ctx, role_ids: list[int]) -> bool:
+async def check_for_roles(ctx, role_ids):
     member = await bot.rest.fetch_member(ctx.guild_id, ctx.author.id)
     roles = member.role_ids
     for id in role_ids:
@@ -245,36 +239,39 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
     with bot.stream(hikari.InteractionCreateEvent, 604800).filter(lambda e: (isinstance(e.interaction, hikari.ComponentInteraction) and e.interaction.message == message)) as stream:
         async for event in stream:
             cid = event.interaction.custom_id
+            interactionmember = await bot.rest.fetch_member(ctx.guild_id, event.interaction.user.id)
+            
             if cid == "mainball":
                     remove_id_from_lists(str(event.interaction.user.id))
                     if len(mainballlist) < ctx.options.mainballcap and getplayercount()<ctx.options.playercap:
-                        mainballlist.append(str(event.interaction.user.id))
+            
+                        mainballlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
                     else:
-                        benchlist.append(str(event.interaction.user.id))
+                        benchlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
             elif cid == "defence":
                     remove_id_from_lists(str(event.interaction.user.id))
                     if len(defencelist) < ctx.options.defencecap and getplayercount()<ctx.options.playercap:
-                        defencelist.append(str(event.interaction.user.id))
+                        defencelist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
                     else:
-                        benchlist.append(str(event.interaction.user.id))
+                        benchlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
             elif cid == "flex":
                     remove_id_from_lists(str(event.interaction.user.id))
                     if (len(flexlist) < ctx.options.flexcap) and getplayercount()<ctx.options.playercap:
-                        flexlist.append(str(event.interaction.user.id))
+                        flexlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
                     else:
-                        benchlist.append(str(event.interaction.user.id))
+                        benchlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
             elif cid == "cannons":
                     remove_id_from_lists(str(event.interaction.user.id))
                     if (len(cannonslist) < ctx.options.cannonscap) and getplayercount()<ctx.options.playercap:
-                        cannonslist.append(str(event.interaction.user.id))
+                        cannonslist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
                     else:
-                        benchlist.append(str(event.interaction.user.id))      
+                        benchlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])      
             elif cid == "tentative":
                     remove_id_from_lists(str(event.interaction.user.id))
-                    tentativelist.append(str(event.interaction.user.id))
+                    tentativelist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
             elif cid == "absent":
                     remove_id_from_lists(str(event.interaction.user.id))
-                    absentlist.append(str(event.interaction.user.id))
+                    absentlist.append([str(event.interaction.user.id),str(interactionmember.display_name)])
             savelists()
             try:
                 embed = generate_war_embed(ctx)
@@ -285,43 +282,57 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
                 pass
     # after timer, remove buttons
     await message.edit(components=[])
+
+def abbreviate_name(name: str) -> str:
+    if len(name) <= 15:
+        return name
+    else:
+        return name[:15] + "..."
+    
 def generate_war_embed(ctx):
     embed = hikari.Embed(title=ctx.options.embedtitle, colour=hikari.Colour(0x09ff00))
     mainballnames = "Empty"
     if len(mainballlist) != 0:
         mainballnames = ""
         for name in mainballlist:
-            mainballnames = mainballnames + "**:crossed_swords:<@" + name + ">**" + "\n"
+            trimmedname = abbreviate_name(name[1])
+            mainballnames = mainballnames + "**⚔️" + trimmedname + "**" + "\n"
     defencenames = "Empty"
     if len(defencelist) != 0:
         defencenames = ""
         for name in defencelist:
-            defencenames = defencenames + "**:shield:<@" + name + ">**" + "\n"
+            trimmedname = abbreviate_name(name[1])
+            defencenames = defencenames + "**🛡️" + trimmedname + "**" + "\n"
     cannonnames = "Empty"
     if len(cannonslist) != 0:
         cannonnames = ""
         for name in cannonslist:
-            cannonnames = cannonnames + "**💣<@" + name + ">**" + "\n"
+            trimmedname = abbreviate_name(name[1])
+            cannonnames = cannonnames + "**💣" + trimmedname + "**" + "\n"
     flexnames = "Empty"
     if len(flexlist) != 0:
         flexnames = ""
         for name in flexlist:
-            flexnames = flexnames + "**:dagger:<@" + name + ">**" + "\n"
+            trimmedname = abbreviate_name(name[1])
+            flexnames = flexnames + "**🗡️" + trimmedname + "**" + "\n"
     tentnames = "Empty"
     if len(tentativelist) != 0:
         tentnames = ""
         for name in tentativelist:
-            tentnames = tentnames + "**<@" + name + ">**" + "\n"  
+            trimmedname = abbreviate_name(name[1])
+            tentnames = tentnames + "**" + trimmedname + "**" + "\n"  
     absentnames = "Empty"
     if len(absentlist) != 0:
         absentnames = ""
         for name in absentlist:
-            absentnames = absentnames + "**<@" + name + ">**" + "\n"
+            trimmedname = abbreviate_name(name[1])
+            absentnames = absentnames + "**" + trimmedname + "**" + "\n"
     benchnames = "Empty"
     if len(benchlist) != 0:
         benchnames = ""
         for name in benchlist:
-            benchnames = benchnames + "**<@" + name + ">**" + "\n"
+            trimmedname = abbreviate_name(name[1])
+            benchnames = benchnames + "**" + trimmedname + "**" + "\n"
     embed.description = "<t:" + str(convert_to_unix_timestamp(str(ctx.options.pdtmeetupdatetime))) + ":R>"
     embed.description = embed.description + "\n:busts_in_silhouette:**" + str(len(mainballlist) + len(flexlist) + len(defencelist) + len(cannonslist)) + "/" + str(ctx.options.playercap) +"**"
     embed.add_field(":crossed_swords:__Mainball__```" + str(len(mainballlist)) + "/" + str(ctx.options.mainballcap) + "```", mainballnames, inline=True)
