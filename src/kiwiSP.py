@@ -148,9 +148,9 @@ async def addplayer(ctx: lightbulb.SlashContext) -> None:
 # move member command
 # ----------------------------------
 @bdo.child
-@lightbulb.option("team", "which team to add to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
+@lightbulb.option("team", "which team to move to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
 @lightbulb.option("member", "mention player", required=True, type=hikari.Member)
-@lightbulb.command("moveplayer", "manually add players")
+@lightbulb.command("moveplayer", "manually move players")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def moveplayer(ctx: lightbulb.SlashContext) -> None:
     global signups
@@ -162,7 +162,7 @@ async def moveplayer(ctx: lightbulb.SlashContext) -> None:
         id = str(int(ctx.options.member))
         signups[id] = {"name": str(ctx.options.member.display_name), "role": ctx.options.team}
         savesignup(signups)
-        await ephemeral_respond("Players added. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
+        await ephemeral_respond("Players moved. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
         return
     except:
         await ephemeral_respond("something went wrong..." ,ctx)
