@@ -8,7 +8,6 @@ import datetime
 import traceback
 import hikari
 import lightbulb
-import random
 import warnings
 from lightbulb.ext import tasks
 epoch_time = datetime.datetime(1970, 1, 1)
@@ -77,15 +76,16 @@ async def ephemeral_respond(text: str, ctx: lightbulb.SlashContext, color=0xff00
     await ctx.respond(text, flags=hikari.MessageFlag.EPHEMERAL)
 
 signups = {}
+
 # ----------------------------------
 # war command
 # ----------------------------------
 @bdo.child
 @lightbulb.option("reloadfromfile", "reload signups from saved file", required=False, default=False, type=bool)
-@lightbulb.option("cannonscap", "max players on cannon team", required=True, max_value=90, min_value=0, type=int)
-@lightbulb.option("flexcap", "max players in flex team", required=True, max_value=90, min_value=0, type=int)
-@lightbulb.option("defencecap", "max players in defence team", required=True, max_value=90, min_value=0, type=int)
-@lightbulb.option("mainballcap", "max players in mainball team", required=True, max_value=90, min_value=0, type=int)
+@lightbulb.option("cannonscap", "max players on cannon team", required=True, max_value=40, min_value=0, type=int)
+@lightbulb.option("flexcap", "max players in flex team", required=True, max_value=40, min_value=0, type=int)
+@lightbulb.option("defencecap", "max players in defence team", required=True, max_value=40, min_value=0, type=int)
+@lightbulb.option("mainballcap", "max players in mainball team", required=True, max_value=40, min_value=0, type=int)
 @lightbulb.option("playercap", "max players across all teams", required=True, max_value=100, min_value=1, type=int)
 @lightbulb.option("pdtmeetupdatetime", "PDT Day and time for meetup formatted like 12/24/2023 9:54 pm", required=True, type=str)
 @lightbulb.option("embedtitle", "title to show at top of embed", required=False, default = "NODE WAR", type=str)
@@ -126,26 +126,35 @@ def loadfromfile():
 # ----------------------------------
 @bdo.child
 @lightbulb.option("team", "which team to add to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
-@lightbulb.option("idlist", "ID or ids separated by commas", required=True, type=str)
-@lightbulb.command("addplayers", "manually add or move players")
+@lightbulb.option("member", "mention player", required=True, type=hikari.Member)
+@lightbulb.command("addplayer", "manually add players")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def addplayer(ctx: lightbulb.SlashContext) -> None:
     global signups
     try:
-        hasrole = await check_for_roles(ctx,[1152085844128178197,1120170416384790538])
-        if not hasrole:
-            await ephemeral_respond("You must have staff role to use this command", ctx)
-            return
-        int_list = [int(x) for x in ctx.options.idlist.split(',')]
-        for id in int_list:
-            id = str(id)
-            fetchedmember = await bot.rest.fetch_member(ctx.guild_id, id)
-            if id in signups:
-                signups[id]['role'] = ctx.options.team
-            else:
-                signups[id] = {"name": str(fetchedmember.display_name), "role": ctx.options.team}
-
+        id = str(int(ctx.options.member))
+        signups[id] = {"name": str(ctx.options.member.display_name), "role": ctx.options.team}
+        savesignup(signups)
         await ephemeral_respond("Players added. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
+        return
+    except:
+        await ephemeral_respond("something went wrong..." ,ctx)
+
+# ----------------------------------
+# move member command
+# ----------------------------------
+@bdo.child
+@lightbulb.option("team", "which team to move to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
+@lightbulb.option("member", "mention player", required=True, type=hikari.Member)
+@lightbulb.command("moveplayer", "manually move players")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def moveplayer(ctx: lightbulb.SlashContext) -> None:
+    global signups
+    try:
+        id = str(int(ctx.options.member))
+        signups[id] = {"name": str(ctx.options.member.display_name), "role": ctx.options.team}
+        savesignup(signups)
+        await ephemeral_respond("Players moved. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
         return
     except:
         await ephemeral_respond("something went wrong..." ,ctx)
@@ -155,26 +164,21 @@ async def addplayer(ctx: lightbulb.SlashContext) -> None:
 # ----------------------------------
 @bdo.child
 @lightbulb.option("remove", "completely remove player from any team and do not bench them", required=False, default=False, type=bool)
-@lightbulb.option("id", "ID (right click their name on member list to copy id)", required=True, type=str)
+@lightbulb.option("member", "mention player", required=True, type=hikari.Member)
 @lightbulb.command("benchplayer", "Remove or bench a player")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def benchplayer(ctx: lightbulb.SlashContext) -> None:
     global signups
     try:
-        hasrole = await check_for_roles(ctx,[1152085844128178197,1120170416384790538])
-        if not hasrole:
-            await ephemeral_respond("You must have staff role to use this command", ctx)
-            return
         if ctx.options.remove:
-            signups.pop(ctx.options.id)
+            signups.pop(str(int(ctx.options.member)))
             savesignup(signups)
             await ephemeral_respond("Player removed, RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
         else:
-            signups[ctx.options.id]["role"] = 'bench'
+            signups[str(int(ctx.options.member))] = {"name": str(ctx.options.member.display_name), "role": 'bench'}
             savesignup(signups)
             await ephemeral_respond("Player benched, RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
     except:
-        traceback.print_exc()
         await ephemeral_respond("Could not remove player..." ,ctx)
 # ----------------------------------
 # autotimestamp
@@ -191,6 +195,31 @@ def convert_to_unix_timestamp(date_time_str):
     unix_timestamp = int(date_time_obj.timestamp())
 
     return unix_timestamp
+
+# ----------------------------------
+# war time command
+# ----------------------------------
+@bdo.child
+@lightbulb.command("timetillwar", "How long until today's war")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def timetillwar(ctx: lightbulb.SlashContext) -> None:
+    try:
+            # Get the current time
+            current_time = datetime.datetime.now()
+
+            # Set the target time to 7:45 PM
+            target_time = current_time.replace(hour=19, minute=45, second=0, microsecond=0)
+
+            # Calculate the time difference
+            time_difference = target_time - current_time
+
+            # Extract hours and minutes from the time difference
+            hours, seconds = divmod(time_difference.seconds, 3600)
+            minutes = seconds // 60
+            await ctx.respond(f"Time remaining until war: **{hours} hours and {minutes} minutes.**",flags=hikari.MessageFlag.EPHEMERAL)
+    except Exception:
+        traceback.print_exc()
+        await ephemeral_respond("Sorry, something went wrong...",ctx)
 
 async def generate_rows(bot: lightbulb.BotApp):
     rows = []
@@ -248,9 +277,10 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
             cid = event.interaction.custom_id
             interactionmember = await bot.rest.fetch_member(ctx.guild_id, event.interaction.user.id)
             userid = str(event.interaction.user.id)
-            #for duplicate name tests
-            #userid = int(random.randrange(1,500000))
-            signups[userid] = {"name": str(interactionmember.display_name), "role": cid}
+            if userid in signups:
+                signups[userid]["role"] = cid
+            else:
+                signups[userid] = {"name": str(interactionmember.display_name), "role": cid}
             savesignup(signups)
 
             try:
@@ -263,13 +293,11 @@ async def handle_responses(bot: lightbulb.BotApp, author: hikari.User, member, m
     # after timer, remove buttons
     await message.edit(components=[])
 
-def abbreviate_name(name: str, maxlen) -> str:
-    if maxlen>17:
-        maxlen = 17
-    if len(name) <= maxlen:
+def abbreviate_name(name: str) -> str:
+    if len(name) <= 15:
         return name
     else:
-        return name[:maxlen] + "…"
+        return name[:15] + "..."
     
 def generate_war_embed(ctx):
     embed = hikari.Embed(title=ctx.options.embedtitle, colour=hikari.Colour(0x09ff00))
@@ -284,17 +312,10 @@ def generate_war_embed(ctx):
 
     #Sort signups by earliest registration
     count = 0
-    playerlen = len(signups)
-    if playerlen == 0:
-        playerlen = 1
-    maxnamelen=1024/playerlen-6
     for id in signups:
-        name = abbreviate_name(signups[id]['name'],int(maxnamelen))
+        name = abbreviate_name(signups[id]['name'])
         if signups[id]["role"] == "absent":
             absentlist.append(name)
-            continue
-        if signups[id]["role"] == "tentative":
-            tentativelist.append(name)
             continue
         if signups[id]["role"] == "bench":
             benchlist.append(name)
@@ -302,21 +323,20 @@ def generate_war_embed(ctx):
 
         if count >= ctx.options.playercap:
             benchlist.append(name)
+        elif signups[id]["role"] == "tentative" and len(tentativelist) < ctx.options.defencecap:
+            tentativelist.append(name)
         elif signups[id]["role"] == "mainball" and len(mainballlist) < ctx.options.mainballcap:
             mainballlist.append(name)
-            count = count + 1
         elif signups[id]["role"] == "defence" and len(defencelist) < ctx.options.defencecap:
             defencelist.append(name)
-            count = count + 1
         elif signups[id]["role"] == "flex" and len(flexlist) < ctx.options.flexcap:
             flexlist.append(name)
-            count = count + 1
         elif signups[id]["role"] == "cannons" and len(cannonslist) < ctx.options.cannonscap:
             cannonslist.append(name)
-            count = count + 1
         else:
             benchlist.append(name)
             
+        count = count + 1
 
 
 
