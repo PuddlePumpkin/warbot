@@ -126,8 +126,8 @@ def loadfromfile():
 # ----------------------------------
 @bdo.child
 @lightbulb.option("team", "which team to add to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
-@lightbulb.option("idlist", "ID or ids separated by commas", required=True, type=str)
-@lightbulb.command("addplayers", "manually add or move players")
+@lightbulb.option("member", "mention player", required=True, type=hikari.Member)
+@lightbulb.command("addplayer", "manually add players")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def addplayer(ctx: lightbulb.SlashContext) -> None:
     global signups
@@ -136,26 +136,44 @@ async def addplayer(ctx: lightbulb.SlashContext) -> None:
         if not hasrole:
             await ephemeral_respond("You must have staff role to use this command", ctx)
             return
-        int_list = [int(x) for x in ctx.options.idlist.split(',')]
-        for id in int_list:
-            id = str(id)
-            fetchedmember = await bot.rest.fetch_member(ctx.guild_id, id)
-            if id in signups:
-                signups[id]['role'] = ctx.options.team
-            else:
-                signups[id] = {"name": str(fetchedmember.display_name), "role": ctx.options.team}
-
+        id = str(int(ctx.options.member))
+        signups[id] = {"name": str(ctx.options.member.display_name), "role": ctx.options.team}
+        savesignup(signups)
         await ephemeral_respond("Players added. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
         return
     except:
         await ephemeral_respond("something went wrong..." ,ctx)
 
 # ----------------------------------
+# move member command
+# ----------------------------------
+@bdo.child
+@lightbulb.option("team", "which team to add to", required=True, choices=["mainball","defence","flex","cannons","bench","tentative","absent"], type=str)
+@lightbulb.option("member", "mention player", required=True, type=hikari.Member)
+@lightbulb.command("moveplayer", "manually add players")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def moveplayer(ctx: lightbulb.SlashContext) -> None:
+    global signups
+    try:
+        hasrole = await check_for_roles(ctx,[1152085844128178197,1120170416384790538])
+        if not hasrole:
+            await ephemeral_respond("You must have staff role to use this command", ctx)
+            return
+        id = str(int(ctx.options.member))
+        signups[id] = {"name": str(ctx.options.member.display_name), "role": ctx.options.team}
+        savesignup(signups)
+        await ephemeral_respond("Players added. RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
+        return
+    except:
+        await ephemeral_respond("something went wrong..." ,ctx)
+
+
+# ----------------------------------
 # Remove member command
 # ----------------------------------
 @bdo.child
 @lightbulb.option("remove", "completely remove player from any team and do not bench them", required=False, default=False, type=bool)
-@lightbulb.option("id", "ID (right click their name on member list to copy id)", required=True, type=str)
+@lightbulb.option("member", "mention player", required=True, type=hikari.Member)
 @lightbulb.command("benchplayer", "Remove or bench a player")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def benchplayer(ctx: lightbulb.SlashContext) -> None:
@@ -166,11 +184,11 @@ async def benchplayer(ctx: lightbulb.SlashContext) -> None:
             await ephemeral_respond("You must have staff role to use this command", ctx)
             return
         if ctx.options.remove:
-            signups.pop(ctx.options.id)
+            signups.pop(str(int(ctx.options.member)))
             savesignup(signups)
             await ephemeral_respond("Player removed, RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
         else:
-            signups[ctx.options.id]["role"] = 'bench'
+            signups[str(int(ctx.options.member))] = {"name": str(ctx.options.member.display_name), "role": 'bench'}
             savesignup(signups)
             await ephemeral_respond("Player benched, RE-PRESS A TEAM BUTTON TO REFRESH TEAM EMBED" ,ctx)
     except:
